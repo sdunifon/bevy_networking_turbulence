@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::tasks::Task;
 use bevy::{
-    app::{App, CoreStage, Events, Plugin},
+    app::{App, CoreStage, Plugin},
     core::FixedTimestep,
     prelude::*,
     tasks::{IoTaskPool, TaskPool},
@@ -17,6 +17,8 @@ use std::{
     net::SocketAddr,
     sync::{atomic, Arc, Mutex},
 };
+use bevy::ecs::event::Events;
+use futures::SinkExt;
 
 use naia_client_socket::ClientSocket;
 #[cfg(not(target_arch = "wasm32"))]
@@ -86,7 +88,7 @@ impl Plugin for NetworkingPlugin {
             self.auto_heartbeat_ms,
         ))
         .add_event::<NetworkEvent>()
-        .add_system(receive_packets.system());
+        .add_system(receive_packets);
         if self.idle_timeout_ms.is_some() || self.auto_heartbeat_ms.is_some() {
             // heartbeats and timeouts checking/sending only runs infrequently:
             app.add_stage_after(
@@ -97,7 +99,7 @@ impl Plugin for NetworkingPlugin {
                         self.heartbeats_and_timeouts_timestep_in_seconds
                             .unwrap_or(0.5),
                     ))
-                    .with_system(heartbeats_and_timeouts.system()),
+                    .with_system(heartbeats_and_timeouts),
             );
         }
     }
@@ -519,7 +521,7 @@ pub fn receive_packets(
                                 // cool
                             }
                             Err(err) => {
-                                error!("Channel Incoming Error: {}", err);
+                                error!("Channel Incoming Error: {:?}", err);
                                 network_events.send(NetworkEvent::Error(
                                     *handle,
                                     NetworkError::TurbulenceChannelError(err),
