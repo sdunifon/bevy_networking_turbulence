@@ -12,9 +12,7 @@ use naia_client_socket::{
     Packet as ClientPacket, PacketSender as ClientSender, Socket as ClientSocket,
 };
 #[cfg(not(target_arch = "wasm32"))]
-use naia_server_socket::{
-    Packet as ServerPacket, PacketSender as ServerSender
-};
+use naia_server_socket::{Packet as ServerPacket, PacketSender as ServerSender};
 
 use turbulence::{
     buffer::BufferPacketPool,
@@ -108,8 +106,7 @@ pub trait Connection: Send + Sync {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub struct ServerConnection {
-    task_pool: TaskPool,
-
+    // task_pool: TaskPool,
     packet_rx: crossbeam_channel::Receiver<Result<Packet, NetworkError>>,
     sender: Option<ServerSender>,
     client_address: SocketAddr,
@@ -124,13 +121,13 @@ pub struct ServerConnection {
 #[cfg(not(target_arch = "wasm32"))]
 impl ServerConnection {
     pub fn new(
-        task_pool: TaskPool,
+        // task_pool: TaskPool,
         packet_rx: crossbeam_channel::Receiver<Result<Packet, NetworkError>>,
         sender: ServerSender,
         client_address: SocketAddr,
     ) -> Self {
         ServerConnection {
-            task_pool,
+            // task_pool,
             packet_rx,
             sender: Some(sender),
             client_address,
@@ -219,8 +216,7 @@ impl Connection for ServerConnection {
                     .write()
                     .expect("stats lock poisoned")
                     .add_tx(packet.len());
-                sender
-                    .send(ServerPacket::new(client_address, (*packet).into()));
+                sender.send(ServerPacket::new(client_address, (*packet).into()));
             }
         }));
     }

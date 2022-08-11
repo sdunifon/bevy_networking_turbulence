@@ -1,8 +1,9 @@
+use bevy::ecs::event::Events;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::tasks::Task;
 use bevy::{
     app::{App, CoreStage, Plugin},
-    core::FixedTimestep,
+    time::FixedTimestep,
     prelude::*,
     tasks::{IoTaskPool, TaskPool},
 };
@@ -18,10 +19,9 @@ use std::{
     net::SocketAddr,
     sync::{atomic, Arc, Mutex},
 };
-use bevy::ecs::event::Events;
-use futures::SinkExt;
 
-use naia_client_socket::Socket as ClientSocket;
+use naia_client_socket::{ClientSocket, Socket as ClientSocket};
+use naia_server_socket::ServerSocket;
 #[cfg(not(target_arch = "wasm32"))]
 use naia_server_socket::Socket as ServerSocket;
 
@@ -74,15 +74,15 @@ pub struct NetworkingPlugin {
 
 impl Plugin for NetworkingPlugin {
     fn build(&self, app: &mut App) {
-        let task_pool = app
-            .world
-            .get_resource::<IoTaskPool>()
-            .expect("`IoTaskPool` resource not found.")
-            .0
-            .clone();
+        // let task_pool = app
+        //     .world
+        //     .get_resource::<IoTaskPool>()
+        //     .expect("`IoTaskPool` resource not found.")
+        //     .0
+        //     .clone();
 
         app.insert_resource(NetworkResource::new(
-            task_pool,
+            // task_pool,
             self.link_conditioner.clone(),
             self.message_flushing_strategy,
             self.idle_timeout_ms,
@@ -110,8 +110,7 @@ impl Plugin for NetworkingPlugin {
 type ServerChannels = HashMap<SocketAddr, Sender<Result<Packet, NetworkError>>>;
 
 pub struct NetworkResource {
-    task_pool: TaskPool,
-
+    // task_pool: TaskPool,
     pending_connections: Arc<Mutex<Vec<Box<dyn Connection>>>>,
     connection_sequence: atomic::AtomicU32,
     pub connections: HashMap<ConnectionHandle, Box<dyn Connection>>,
@@ -189,7 +188,7 @@ unsafe impl Sync for NetworkResource {}
 
 impl NetworkResource {
     pub fn new(
-        task_pool: TaskPool,
+        // task_pool: TaskPool,
         link_conditioner: Option<LinkConditionerConfig>,
         message_flushing_strategy: MessageFlushingStrategy,
         idle_timeout_ms: Option<usize>,
@@ -200,7 +199,7 @@ impl NetworkResource {
             MuxPacketPool::new(BufferPacketPool::new(SimpleBufferPool(MAX_PACKET_LEN)));
 
         NetworkResource {
-            task_pool,
+            // task_pool,
             connections: HashMap::new(),
             connection_sequence: atomic::AtomicU32::new(0),
             pending_connections: Arc::new(Mutex::new(Vec::new())),
@@ -252,9 +251,9 @@ impl NetworkResource {
 
         let server_channels = self.server_channels.clone();
         let pending_connections = self.pending_connections.clone();
-        let task_pool = self.task_pool.clone();
+        // let task_pool = self.task_pool.clone();
 
-        self.listeners.push(self.task_pool.spawn(async move {
+        self.listeners.push(IoTaskPool::get().spawn(async move {
             let mut receiver = server_socket.packet_receiver();
             loop {
                 match receiver.receive() {
@@ -303,7 +302,7 @@ impl NetworkResource {
                                 // It makes sense to store the channel only if it's healthy.
                                 pending_connections.lock().unwrap().push(Box::new(
                                     transport::ServerConnection::new(
-                                        task_pool.clone(),
+                                        // task_pool.clone(),
                                         packet_rx,
                                         server_socket.packet_sender(),
                                         address,
@@ -345,7 +344,7 @@ impl NetworkResource {
             .lock()
             .unwrap()
             .push(Box::new(transport::ClientConnection::new(
-                self.task_pool.clone(),
+                // self.task_pool.clone(),
                 client_socket,
                 sender,
             )));
