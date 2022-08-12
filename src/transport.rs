@@ -22,6 +22,7 @@ use turbulence::{
 };
 
 use futures_lite::StreamExt;
+use crate::IoTaskPool;
 
 use super::{
     channels::{SimpleBufferPool, TaskPoolRuntime},
@@ -209,7 +210,7 @@ impl Connection for ServerConnection {
         let client_address = self.client_address;
         let stats = self.stats.clone();
 
-        self.channels_task = Some(self.task_pool.spawn(async move {
+        self.channels_task = Some(IoTaskPool::get().spawn(async move {
             loop {
                 let packet = channels_tx.next().await.unwrap();
                 stats
@@ -231,7 +232,7 @@ impl Connection for ServerConnection {
 }
 
 pub struct ClientConnection {
-    task_pool: TaskPool,
+    // task_pool: TaskPool,
 
     socket: ClientSocket,
     sender: Option<ClientSender>,
@@ -244,9 +245,9 @@ pub struct ClientConnection {
 }
 
 impl ClientConnection {
-    pub fn new(task_pool: TaskPool, socket: ClientSocket, sender: ClientSender) -> Self {
+    pub fn new( socket: ClientSocket, sender: ClientSender) -> Self {
         ClientConnection {
-            task_pool,
+            // task_pool,
             socket,
             sender: Some(sender),
             stats: Arc::new(RwLock::new(PacketStats::default())),
@@ -337,7 +338,7 @@ impl Connection for ClientConnection {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            self.channels_task = Some(self.task_pool.spawn(closure));
+            self.channels_task = Some(IoTaskPool::get().spawn(closure));
         }
         #[cfg(target_arch = "wasm32")]
         self.task_pool.spawn(closure);

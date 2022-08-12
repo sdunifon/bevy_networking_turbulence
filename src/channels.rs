@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use std::{future::Future, ops::Deref, pin::Pin, sync::Arc, time::Duration};
 
 use turbulence::{buffer::BufferPool, runtime::Runtime};
+use crate::IoTaskPool;
 
 #[derive(Clone, Debug)]
 pub struct SimpleBufferPool(pub usize);
@@ -23,17 +24,15 @@ impl BufferPool for SimpleBufferPool {
 pub struct TaskPoolRuntime(Arc<TaskPoolRuntimeInner>);
 
 pub struct TaskPoolRuntimeInner {
-    pool: TaskPool,
     #[cfg(not(target_arch = "wasm32"))]
     tasks: Mutex<Vec<Task<()>>>, // FIXME: cleanup finished
 }
 
 impl TaskPoolRuntime {
-    pub fn new(pool: TaskPool) -> Self {
+    pub fn new() -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {
             TaskPoolRuntime(Arc::new(TaskPoolRuntimeInner {
-                pool,
                 tasks: Mutex::new(Vec::new()),
             }))
         }
@@ -59,7 +58,7 @@ impl Runtime for TaskPoolRuntime {
         self.tasks
             .lock()
             .unwrap()
-            .push(self.pool.spawn(Box::pin(f)));
+            .push(IoTaskPool::get().spawn(Box::pin(f)));
         #[cfg(target_arch = "wasm32")]
         self.pool.spawn(Box::pin(f));
     }

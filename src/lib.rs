@@ -19,9 +19,10 @@ use std::{
     net::SocketAddr,
     sync::{atomic, Arc, Mutex},
 };
+use std::ops::Deref;
 
-use naia_client_socket::{ClientSocket, Socket as ClientSocket};
-use naia_server_socket::ServerSocket;
+use naia_client_socket::{ Socket as ClientSocket};
+
 #[cfg(not(target_arch = "wasm32"))]
 use naia_server_socket::Socket as ServerSocket;
 
@@ -194,7 +195,7 @@ impl NetworkResource {
         idle_timeout_ms: Option<usize>,
         auto_heartbeat_ms: Option<usize>,
     ) -> Self {
-        let runtime = TaskPoolRuntime::new(task_pool.clone());
+        let runtime = TaskPoolRuntime::new();
         let packet_pool =
             MuxPacketPool::new(BufferPacketPool::new(SimpleBufferPool(MAX_PACKET_LEN)));
 
@@ -326,6 +327,7 @@ impl NetworkResource {
             }
         }));
     }
+
 
     pub fn connect(&mut self, server_session_url: &str) {
         let client_socket = {
